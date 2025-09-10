@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: rx-magazine-backend
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        value: mongodb+srv://rxacademy_user:rxacademy101@rxacademycluster.u1l2en5.mongodb.net/?retryWrites=true&w=majority&appName=rxacademycluster
+      - key: DB_NAME
+        value: rx_magazine
+      - key: JWT_SECRET
+        value: rx_lifestyle_jwt_secret_key_2025_secure_token
+      - key: JWT_REFRESH_SECRET
+        value: rx_lifestyle_refresh_jwt_secret_key_2025
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ADMIN_EMAIL
+        value: admin@rxlifestyle.com
+      - key: ADMIN_PASSWORD
+        value: rxacademy2025
+      - key: FRONTEND_URL
+        value: https://rx-magazine-frontend.vercel.app
+      - key: ADMIN_PANEL_URL
+        value: https://rx-magazine-admin.vercel.app
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        value: fankvpv@gmail.com
+      - key: EMAIL_PASS
+        value: brxe lmhz unmk yfju
