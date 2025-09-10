@@ -48,6 +48,8 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       process.env.ADMIN_PANEL_URL,
+      'https://rx-academy-admin-101.vercel.app',
+      'https://rxsuccessacademy.com',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:8080',
@@ -72,9 +74,16 @@ const corsOptions = {
       }
     }
     
+    // Log the origin for debugging in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('CORS check - Origin:', origin);
+      console.log('CORS check - Allowed origins:', allowedOrigins);
+    }
+    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
