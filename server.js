@@ -50,6 +50,9 @@ const corsOptions = {
       process.env.ADMIN_PANEL_URL,
       'https://rx-academy-admin-101.vercel.app',
       'https://rxsuccessacademy.com',
+      'https://www.rxsuccessacademy.com',
+      'https://rx-academy3-flenco6ba-fankarwantas-projects.vercel.app',
+      'https://rx-academy3-goh53gxr8-fankarwantas-projects.vercel.app',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:8080',
@@ -72,6 +75,11 @@ const corsOptions = {
       if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
         return callback(null, true);
       }
+    }
+
+    // Allow Vercel preview deployments
+    if (origin && origin.includes('vercel.app')) {
+      return callback(null, true);
     }
     
     // Log the origin for debugging in production
