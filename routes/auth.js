@@ -315,4 +315,82 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
+// Change password
+router.put('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    // Get user from database
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      // Log failed password change attempt
+      await AuditLog.logEvent({
+        userId: user._id,
+        action: 'password_change_failed',
+        resourceType: 'user',
+        details: { reason: 'invalid_current_password' },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        severity: 'medium',
+        status: 'failure'
+      });
+
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update password (will be hashed by pre-save middleware)
+    user.password = newPassword;
+    await user.save();
+
+    // Log successful password change
+    await AuditLog.logEvent({
+      userId: user._id,
+      action: 'password_changed',
+      resourceType: 'user',
+      details: { method: 'user_initiated' },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      severity: 'medium'
+    });
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+});
+
 export default router;
