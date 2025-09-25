@@ -513,7 +513,7 @@ router.get('/pending-registrations',
       const { page = 1, limit = 20, status = 'payment_submitted' } = req.query;
       const skip = (page - 1) * limit;
 
-      const filters = { registrationStatus: status };
+      const filters = status === 'all' ? {} : { registrationStatus: status };
       
       const users = await User.find(filters)
         .select('email fullName mobileNumber paymentProofUrl paymentStatus registrationStatus createdAt adminNotes')
