@@ -504,4 +504,133 @@ router.put('/users/:id/subscription',
   }
 );
 
+// Get pending registrations (payment verification)
+router.get('/pending-registrations', 
+  authenticateAdmin,
+  validatePagination,
+  async (req, res) => {
+    try {
+      const { page = 1, limit = 20, status = 'payment_submitted' } = req.query;
+      const skip = (page - 1) * limit;
+
+      const filters = { registrationStatus: status };
+      
+      const users = await User.find(filters)
+        .select('email fullName mobileNumber paymentProofUrl paymentStatus registrationStatus createdAt adminNotes')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+
+      const total = await User.countDocuments(filters);
+
+      res.json({
+        success: true,
+        data: {
+          users,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get pending registrations error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch pending registrations'
+      });
+    }
+  }
+);
+
+// Approve/reject user registration
+router.put('/users/:id/registration-status', 
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const { action, adminNotes } = req.body; // action: 'approve' or 'reject'
+      
+      if (!['approve', 'reject'].includes(action)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid action. Must be "approve" or "reject"'
+        });
+      }
+
+      const user = await User.findById(req.params.id);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const oldStatus = {
+        registrationStatus: user.registrationStatus,
+        paymentStatus: user.paymentStatus,
+        subscriptionStatus: user.subscriptionStatus,
+        subscriptionTier: user.subscriptionTier
+      };
+
+      if (action === 'approve') {
+        user.registrationStatus = 'approved';
+        user.paymentStatus = 'verified';
+        user.paymentVerificationDate = new Date();
+        user.subscriptionStatus = 'active';
+        user.subscriptionTier = 'premium';
+        user.isEmailVerified = true;
+      } else {
+        user.registrationStatus = 'rejected';
+        user.paymentStatus = 'rejected';
+      }
+
+      if (adminNotes) {
+        user.adminNotes = adminNotes;
+      }
+
+      await user.save();
+
+      // Log registration status change
+      await AuditLog.logEvent({
+        userId: req.user._id,
+        action: `registration_${action}d`,
+        resourceType: 'user',
+        resourceId: user._id.toString(),
+        details: { 
+          targetUserEmail: user.email,
+          targetUserName: user.fullName,
+          oldStatus,
+          newStatus: {
+            registrationStatus: user.registrationStatus,
+            paymentStatus: user.paymentStatus,
+            subscriptionStatus: user.subscriptionStatus,
+            subscriptionTier: user.subscriptionTier
+          },
+          adminNotes,
+          processedBy: req.user.email
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        severity: 'high'
+      });
+
+      res.json({
+        success: true,
+        message: `Registration ${action}d successfully`,
+        data: {
+          user: user.getPublicProfile()
+        }
+      });
+    } catch (error) {
+      console.error('Update registration status error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update registration status'
+      });
+    }
+  }
+);
+
 export default router;

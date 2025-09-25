@@ -4,6 +4,7 @@ import AdminUser from '../models/AdminUser.js';
 import AuditLog from '../models/AuditLog.js';
 import { generateToken, generateRefreshToken, authenticate } from '../middleware/auth.js';
 import { validateUserRegistration, validateUserLogin } from '../middleware/validation.js';
+import upload from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -64,6 +65,91 @@ router.post('/register', validateUserRegistration, async (req, res) => {
   }
 });
 
+// Register new user with payment proof
+router.post('/register-with-payment', upload.single('paymentProof'), async (req, res) => {
+  try {
+    const { email, password, fullName, mobileNumber } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !fullName || !mobileNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, password, full name, and mobile number are required'
+      });
+    }
+
+    // Check if payment proof was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment proof image is required'
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email'
+      });
+    }
+
+    // Create new user with payment proof
+    const user = new User({
+      email,
+      password,
+      fullName,
+      mobileNumber,
+      paymentProofUrl: req.file.path,
+      registrationStatus: 'payment_submitted',
+      paymentStatus: 'pending'
+    });
+
+    await user.save();
+
+    // Log registration event
+    await AuditLog.logEvent({
+      userId: user._id,
+      action: 'user_registered_with_payment',
+      resourceType: 'user',
+      resourceId: user._id.toString(),
+      details: { 
+        email, 
+        fullName, 
+        mobileNumber,
+        paymentProofUrl: req.file.path,
+        registrationStatus: 'payment_submitted'
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      severity: 'low'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration submitted successfully. Please wait for admin confirmation.',
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          fullName: user.fullName,
+          mobileNumber: user.mobileNumber,
+          registrationStatus: user.registrationStatus,
+          paymentStatus: user.paymentStatus,
+          createdAt: user.createdAt
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Registration with payment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed'
+    });
+  }
+});
+
 // Login user
 router.post('/login', validateUserLogin, async (req, res) => {
   try {
@@ -75,6 +161,24 @@ router.post('/login', validateUserLogin, async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
+      });
+    }
+
+    // Check if user registration is approved
+    if (user.registrationStatus !== 'approved') {
+      let message = 'Account not yet approved';
+      if (user.registrationStatus === 'pending_payment') {
+        message = 'Please complete your registration with payment proof';
+      } else if (user.registrationStatus === 'payment_submitted') {
+        message = 'Your registration is pending admin approval';
+      } else if (user.registrationStatus === 'rejected') {
+        message = 'Your registration has been rejected. Please contact support.';
+      }
+      
+      return res.status(403).json({
+        success: false,
+        message: message,
+        registrationStatus: user.registrationStatus
       });
     }
 

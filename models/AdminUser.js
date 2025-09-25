@@ -37,8 +37,7 @@ const adminUserSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
-adminUserSchema.index({ userId: 1 });
+// Indexes for better performance (userId index is automatically created by unique: true)
 adminUserSchema.index({ role: 1 });
 adminUserSchema.index({ isActive: 1 });
 

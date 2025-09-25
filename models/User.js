@@ -41,15 +41,40 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  lockUntil: Date
+  lockUntil: Date,
+  // New fields for payment verification
+  mobileNumber: {
+    type: String,
+    trim: true
+  },
+  paymentProofUrl: {
+    type: String,
+    trim: true
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  paymentVerificationDate: Date,
+  registrationStatus: {
+    type: String,
+    enum: ['pending_payment', 'payment_submitted', 'approved', 'rejected'],
+    default: 'pending_payment'
+  },
+  adminNotes: {
+    type: String,
+    trim: true
+  }
 }, {
   timestamps: true
 });
 
-// Indexes for better performance
-userSchema.index({ email: 1 });
+// Indexes for better performance (email index is automatically created by unique: true)
 userSchema.index({ subscriptionStatus: 1 });
 userSchema.index({ subscriptionTier: 1 });
+userSchema.index({ registrationStatus: 1 });
+userSchema.index({ paymentStatus: 1 });
 
 // Virtual for checking if account is locked
 userSchema.virtual('isLocked').get(function() {
@@ -112,9 +137,13 @@ userSchema.methods.getPublicProfile = function() {
     id: this._id,
     email: this.email,
     fullName: this.fullName,
+    mobileNumber: this.mobileNumber,
     subscriptionTier: this.subscriptionTier,
     subscriptionStatus: this.subscriptionStatus,
     isEmailVerified: this.isEmailVerified,
+    paymentStatus: this.paymentStatus,
+    registrationStatus: this.registrationStatus,
+    paymentVerificationDate: this.paymentVerificationDate,
     createdAt: this.createdAt,
     lastLogin: this.lastLogin
   };

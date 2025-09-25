@@ -62,10 +62,9 @@ const subscriptionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
+// Indexes for better performance (stripeSubscriptionId index is automatically created by unique: true)
 subscriptionSchema.index({ userId: 1 });
 subscriptionSchema.index({ status: 1 });
-subscriptionSchema.index({ stripeSubscriptionId: 1 });
 subscriptionSchema.index({ currentPeriodEnd: 1 });
 
 // Virtual to check if subscription is active
