@@ -263,8 +263,8 @@ router.get('/dashboard/stats',
         createdAt: { $gte: startOfWeek }
       });
 
-      // Get subscription revenue (mock calculation)
-      const subscriptionRevenue = await User.aggregate([
+      // Get subscription breakdown for analytics
+      const subscriptionBreakdown = await User.aggregate([
         { $match: { subscriptionStatus: 'active' } },
         {
           $group: {
@@ -274,12 +274,6 @@ router.get('/dashboard/stats',
         }
       ]);
 
-      let estimatedRevenue = 0;
-      subscriptionRevenue.forEach(tier => {
-        if (tier._id === 'premium') estimatedRevenue += tier.count * 999;
-        if (tier._id === 'enterprise') estimatedRevenue += tier.count * 2999;
-      });
-
       res.json({
         success: true,
         data: {
@@ -288,8 +282,7 @@ router.get('/dashboard/stats',
           totalAdmins,
           recentActivity,
           newUsersThisWeek,
-          estimatedRevenue,
-          subscriptionBreakdown: subscriptionRevenue
+          subscriptionBreakdown
         }
       });
     } catch (error) {
